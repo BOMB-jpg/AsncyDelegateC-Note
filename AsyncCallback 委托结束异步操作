@@ -16,33 +16,42 @@ namespace Examples.AdvancedProgramming.AsynchronousOperations
 {
     public class UseDelegateForAsyncCallback
     {
-        static int requestCounter;
-        static ArrayList hostData = new ArrayList();
+        static int requestCounter;  //需求数量
+        static ArrayList hostData = new ArrayList();  //域名的数组
         static StringCollection hostNames = new StringCollection();
         static void UpdateUserInterface()
         {
             // Print a message to indicate that the application
             // is still working on the remaining requests.
-            Console.WriteLine("{0} requests remaining.", requestCounter);
+            Console.WriteLine("{0} requests remaining.", requestCounter);  //正在跟踪域名数量
         }
         public static void Main()
         {
             // Create the delegate that will process the results of the
             // asynchronous request.
-            AsyncCallback callBack = new AsyncCallback(ProcessDnsInformation);
+            AsyncCallback callBack = new AsyncCallback(ProcessDnsInformation);    //域名回调
             string host;
             do
             {
+
+             //输入需要查询的名字  例如google tecent
                 Console.Write(" Enter the name of a host computer or <enter> to finish: ");
                 host = Console.ReadLine();
+            //如果收到的名字合理
                 if (host.Length > 0)
                 {
+             //ref 引用直接修改  原子性递增增加安全性
                     // Increment the request counter in a thread safe manner.
                     Interlocked.Increment(ref requestCounter);
                     // Start the asynchronous request for DNS information.
+         //public static IAsyncResult BeginGetHostEntry(string hostNameOrAddress,
+                                                        AsyncCallback requestCallback, 
+                                                        object state);
+         // 用于dns类中查询主机网络地址信息
+
                     Dns.BeginGetHostEntry(host, callBack, host);
                  }
-            } while (host.Length > 0);
+            } while (host.Length > 0);    
             // The user has entered all of the host names for lookup.
             // Now wait until the threads complete.
             while (requestCounter > 0)
@@ -85,24 +94,25 @@ namespace Examples.AdvancedProgramming.AsynchronousOperations
        }
 
         // The following method is called when each asynchronous operation completes.
-        static void ProcessDnsInformation(IAsyncResult result)
+//这里是异步回调过程
+        static void ProcessDnsInformation(IAsyncResult result)  //callback回调函数需要使用  IAsynacResult接口
         {
-            string hostName = (string) result.AsyncState;
-            hostNames.Add(hostName);
+            string hostName = (string) result.AsyncState;    //AsyncState 包含了异步DNS查询传递的主机名
+            hostNames.Add(hostName);  //hostNames是一个主机名集合 将所有需要跟踪的异步进程都放到hostNames
             try
             {
                 // Get the results.
-                IPHostEntry host = Dns.EndGetHostEntry(result);
+                IPHostEntry host = Dns.EndGetHostEntry(result);  //  得到了result之后 EndGetHostEntry   是指 跟踪的异步结束 得到了host 再放入主机信息里
                 hostData.Add(host);
             }
             // Store the exception message.
-            catch (SocketException e)
+            catch (SocketException e)  //try  catch 异常处理操作  将线程出现的错误放到hostData数据集合里  也就是说无论是否找到了需要的域名都要在hostdata里集合
             {
                 hostData.Add(e.Message);
             }
             finally
             {
-                // Decrement the request counter in a thread-safe manner.
+                // Decrement the request counter in a thread-safe manner.  //完成任务后  解锁减少 requestCounter 跟踪域名数量
                 Interlocked.Decrement(ref requestCounter);
             }
         }
